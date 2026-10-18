@@ -15,10 +15,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const browser = await puppeteer.launch({
     executablePath: '/tmp/chromium',
-    headless: true,
+    headless: 'shell',
     env: { ...process.env, LD_LIBRARY_PATH: '/tmp/stublibs' },
     args: [
-      '--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars',
+      '--no-sandbox', '--no-zygote', '--single-process', '--in-process-gpu',
+      '--disable-dev-shm-usage', '--hide-scrollbars',
       '--window-size=1280,720', '--use-gl=angle', '--use-angle=swiftshader',
       '--enable-unsafe-swiftshader', '--mute-audio'
     ]
@@ -86,6 +87,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     return c;
   });
   console.log('dynamic close at', JSON.stringify(dynClose));
+  await page.mouse.move(640, 690); // прицел на юг — игрок разворачивается лицом к камере
+  await sleep(3000);
+  await page.evaluate((c) => {
+    const s = window.__nv84.state;
+    const me = s.heisters.find(h => h.id === s.youId);
+    if (me) window.__nv84.cam = { x: me.x, y: me.y, dist: 5.2 };
+  });
   await waitFrames(8);
   await page.screenshot({ path: path.join(OUT, `${TAG}-${HEIST}-close.png`) });
   console.log('shot: close (team)');

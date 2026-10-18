@@ -16,9 +16,10 @@ const check = (name, ok, extra) => { console.log(`${ok ? '✔' : '✘'} ${name}$
 
 (async () => {
   const browser = await puppeteer.launch({
-    executablePath: CHROMIUM, headless: true,
+    executablePath: CHROMIUM, headless: process.env.CHROMIUM_PATH ? true : 'shell',
     env: { ...process.env, LD_LIBRARY_PATH: '/tmp/stublibs' },
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1280,720',
+    args: ['--no-sandbox', '--no-zygote', '--single-process', '--in-process-gpu',
+           '--disable-dev-shm-usage', '--window-size=1280,720',
            '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio',
            '--js-flags=--max-old-space-size=2048']
   });
