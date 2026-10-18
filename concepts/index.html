@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎭 Концепт-арт: 9 визуальных стилей heist-шутера</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0d0d12; color:#e8e6df; font-family:'Segoe UI', system-ui, sans-serif; padding:32px 20px 60px; }
+  header { max-width:1200px; margin:0 auto 10px; text-align:center; }
+  h1 { font-size:34px; letter-spacing:1px; }
+  h1 span { color:#f2c230; }
+  .sub { color:#9a97a8; margin:10px auto 6px; max-width:760px; line-height:1.55; font-size:15px; }
+  .warn { color:#ff9d5c; font-size:13px; margin-bottom:26px; text-align:center; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:22px; max-width:1200px; margin:0 auto; }
+  .card { background:#16161f; border:1px solid #2a2a3a; border-radius:14px; overflow:hidden; transition:transform .15s, border-color .15s; }
+  .card:hover { transform:translateY(-3px); border-color:#f2c230; }
+  .card img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:#000; }
+  .ph { width:100%; aspect-ratio:4/3; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; font-size:15px; line-height:1.6; color:#fff; }
+  .ph-heat { background:linear-gradient(160deg,#3a3f45,#6b7280 55%,#8c7a5f); }
+  .ph-blue { background:#0b3d91; background-image:linear-gradient(rgba(255,255,255,.13) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.13) 1px,transparent 1px); background-size:26px 26px; }
+  .body { padding:16px 18px 18px; }
+  .num { display:inline-block; background:#f2c230; color:#111; font-weight:800; border-radius:7px; padding:2px 9px; font-size:14px; margin-bottom:8px; }
+  h2 { font-size:20px; margin-bottom:2px; }
+  .en { color:#9a97a8; font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; }
+  .pitch { font-size:14px; line-height:1.55; color:#cfcaba; margin-bottom:12px; }
+  .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .dot { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,.25); }
+  .badge { font-size:12px; font-weight:700; border-radius:20px; padding:3px 11px; }
+  .easy { background:#14532d; color:#86efac; } .mid { background:#713f12; color:#fde68a; } .hard { background:#7f1d1d; color:#fca5a5; }
+  .tag { font-size:12px; color:#b9b6c9; background:#23232f; border-radius:20px; padding:3px 10px; }
+  .rec { outline:2px solid #f2c230; outline-offset:-2px; }
+  .recflag { background:#f2c230; color:#111; font-size:12px; font-weight:800; padding:3px 10px; border-radius:20px; }
+  footer { max-width:900px; margin:36px auto 0; text-align:center; background:#16161f; border:1px solid #f2c230; border-radius:14px; padding:22px; line-height:1.6; }
+  footer b { color:#f2c230; font-size:18px; }
+  a { color:#7fd4ff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎭 PAYDAY-LIKE: <span>9 визуальных стилей</span></h1>
+  <p class="sub">Этап 1 — концепт-арт. Одна и та же сцена (банк, 4 грабителя в масках, дрель, заложники, SWAT) в девяти кардинально разных стилях.
+  Подробное описание каждого по 11 пунктам — в файле <a href="CONCEPT_ART.md">CONCEPT_ART.md</a>.</p>
+</header>
+<p class="warn">⚠️ Арты №4 и №5 упёрлись в лимит генерации изображений на ход — догенерируются следующим сообщением. Их текстовые концепты полные.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <img src="01-noir.jpg" alt="Нуар">
+    <div class="body">
+      <span class="num">№1</span>
+      <h2>«Красные маски»</h2><div class="en">Midnight Ledger · Нуар 40-х</div>
+      <p class="pitch">Чёрно-белое кино, дождь и жалюзи. Единственный цвет — красный: маски, кровь, сигнализация. Конусы зрения — лучи фонарей.</p>
+      <div class="row"><span class="dot" style="background:#0a0a0c"></span><span class="dot" style="background:#e8e6df"></span><span class="dot" style="background:#8a8a8a"></span><span class="dot" style="background:#c1121f"></span></div>
+      <div class="row"><span class="badge mid">Сложность: средняя</span><span class="tag">Sin City</span><span class="tag">L.A. Noire</span></div>
+    </div>
+  </div>
+
+  <div class="card rec">
+    <img src="02-comic.jpg" alt="Комикс">
+    <div class="body">
+      <span class="num">№2</span> <span class="recflag">⭐ рекомендация</span>
+      <h2>«Чернила и свинец»</h2><div class="en">Ink &amp; Ammunition · Графический роман</div>
+      <p class="pitch">Жирные контуры, halftone, RATATA! и бабблы «!» над охраной. Духовный наследник арта оригинального Payday.</p>
+      <div class="row"><span class="dot" style="background:#f2c230"></span><span class="dot" style="background:#c0392b"></span><span class="dot" style="background:#1b2a4a"></span><span class="dot" style="background:#ede3ce"></span></div>
+      <div class="row"><span class="badge mid">Сложность: средняя</span><span class="tag">Payday</span><span class="tag">XIII</span><span class="tag">Фрэнк Миллер</span></div>
+    </div>
+  </div>
+
+  <div class="card rec">
+    <img src="03-neon-miami.jpg" alt="Неон Майами">
+    <div class="body">
+      <span class="num">№3</span> <span class="recflag">⭐ рекомендация</span>
+      <h2>«Неоновое хранилище»</h2><div class="en">Neon Vault '84 · Майами 80-х</div>
+      <p class="pitch">Розово-циановый неон, светящиеся маски зверей, лазерная сетка сигнализации, пол-зеркало. Дешёвый «сок» через glow.</p>
+      <div class="row"><span class="dot" style="background:#ff2e9a"></span><span class="dot" style="background:#00e5ff"></span><span class="dot" style="background:#2a0a4a"></span><span class="dot" style="background:#ffd319"></span></div>
+      <div class="row"><span class="badge easy">Сложность: легко–средняя</span><span class="tag">Hotline Miami</span><span class="tag">Vice City</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ph ph-heat">🎬 АРТ ДОГЕНЕРИРУЕТСЯ<br><small>Та же сцена как кадр из «Heat»: пыль в дневном свете,<br>серые костюмы, хоккейные маски, ноль глянца</small></div>
+    <div class="body">
+      <span class="num">№4</span>
+      <h2>«Профессионалы»</h2><div class="en">Heatline · Грязный реализм</div>
+      <p class="pitch">Кинематографичный реализм Майкла Манна: минимум HUD, хардкорный стелс без подсказок. ⚠️ Риск нечитаемости сверху.</p>
+      <div class="row"><span class="dot" style="background:#6b7280"></span><span class="dot" style="background:#8c7a5f"></span><span class="dot" style="background:#b8c4ce"></span><span class="dot" style="background:#4a4a44"></span></div>
+      <div class="row"><span class="badge hard">Сложность: сложная</span><span class="tag">Heat (1995)</span><span class="tag">Ready or Not</span></div>
+    </div>
+  </div>
+
+  <div class="card rec">
+    <div class="ph ph-blue">📐 АРТ ДОГЕНЕРИРУЕТСЯ<br><small>Весь уровень — синий лист-синька: белые линии, размеры,<br>пунктирные маршруты, красный маркер на камерах</small></div>
+    <div class="body">
+      <span class="num">№5</span> <span class="recflag">⭐ рекомендация</span>
+      <h2>«Чертёж»</h2><div class="en">The Blueprint · План ограбления</div>
+      <p class="pitch">Игра на столе планирования: сектора камер, радиусы шума с подписями, аннотации дрели. Гениальный стелс, ноль спрайтов.</p>
+      <div class="row"><span class="dot" style="background:#0b3d91"></span><span class="dot" style="background:#ffffff"></span><span class="dot" style="background:#7fd4ff"></span><span class="dot" style="background:#ff3b30"></span></div>
+      <div class="row"><span class="badge easy">Сложность: лёгкая</span><span class="tag">Monaco</span><span class="tag">Ocean's Eleven</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="06-cartoon.jpg" alt="Мультяшный">
+    <div class="body">
+      <span class="num">№6</span>
+      <h2>«Маски-шоу»</h2><div class="en">Masked Mayhem · Мульт / cel-shaded</div>
+      <p class="pitch">Гигантские головы-маски (клоун, свинья, утка), заложники с попкорном, SWAT на банановой кожуре. Чёрный юмор и хаос.</p>
+      <div class="row"><span class="dot" style="background:#ffd54a"></span><span class="dot" style="background:#ff5a5f"></span><span class="dot" style="background:#3ec1d3"></span><span class="dot" style="background:#f5b301"></span></div>
+      <div class="row"><span class="badge mid">Сложность: средняя</span><span class="tag">Overcooked</span><span class="tag">«Маска»</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="07-lowpoly.jpg" alt="Low-poly">
+    <div class="body">
+      <span class="num">№7</span>
+      <h2>«Полигональный налёт»</h2><div class="en">Polyvault · Low-poly диорама</div>
+      <p class="pitch">Уровень как архитектурный макет. Гранёные маски-кристаллы разного цвета — идеальная идентификация игроков.</p>
+      <div class="row"><span class="dot" style="background:#d9d3c3"></span><span class="dot" style="background:#8fa3b8"></span><span class="dot" style="background:#b388ff"></span><span class="dot" style="background:#ff5252"></span></div>
+      <div class="row"><span class="badge mid">Сложность: средняя</span><span class="tag">Hitman GO</span><span class="tag">Monument Valley</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="08-pixel.jpg" alt="Пиксель-арт">
+    <div class="body">
+      <span class="num">№8</span>
+      <h2>«16-битные налётчики»</h2><div class="en">16-Bit Bandits · Пиксель-арт</div>
+      <p class="pitch">SNES-эстетика: цветные балаклавы RED/BLUE/GREEN/YELLOW, TEAM CASH, звёзды розыска. Ностальгичный аркадный азарт.</p>
+      <div class="row"><span class="dot" style="background:#8b5a2b"></span><span class="dot" style="background:#cfc8b8"></span><span class="dot" style="background:#d32f2f"></span><span class="dot" style="background:#1976d2"></span></div>
+      <div class="row"><span class="badge easy">Сложность: легко–средняя</span><span class="tag">GTA 1/2</span><span class="tag">Enter the Gungeon</span></div>
+    </div>
+  </div>
+
+  <div class="card rec">
+    <img src="09-vhs-cctv.jpg" alt="VHS CCTV">
+    <div class="body">
+      <span class="num">№9</span> <span class="recflag">⭐ рекомендация</span>
+      <h2>«Плёнка №7»</h2><div class="en">TAPE_07 // CAM 04 · VHS / CCTV</div>
+      <p class="pitch">Вся игра — запись с камер банка: рамки трекинга SUSPECT-1…4, слепые зоны камер = механика стелса, глитч от взрывов.</p>
+      <div class="row"><span class="dot" style="background:#6a7268"></span><span class="dot" style="background:#2e332e"></span><span class="dot" style="background:#c9cfc4"></span><span class="dot" style="background:#e53935"></span></div>
+      <div class="row"><span class="badge mid">Сложность: средняя</span><span class="tag">Manhunt</span><span class="tag">Outlast</span></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <b>Какой вариант ты выбираешь?</b><br>
+  Напиши в чат номер или название — и начнётся разработка игры на его основе.<br>
+  Возможны гибриды: например, геймплей №3 (неон) + планирование №5 (чертёж).
+</footer>
+</body>
+</html>
