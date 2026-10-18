@@ -276,7 +276,7 @@ function startHeist(defId){
   def.safes.forEach(s=>G.drills.push({ id:nextEntId++, kind:'safe', x:s[0]+0.5, y:s[1]+0.5, lootType:s[2], state:'idle', p:0, total:s[3], jams:[0.55] }));
   def.loot.forEach(l=>G.lootPts.push({ id:nextEntId++, x:l[0]+0.5, y:l[1]+0.5, type:l[2], left:l[3] }));
   broadcast({ t:'heist', map:{ w:def.w, h:def.h, grid, coverType, escape:def.escape, signs:def.signs, name:def.name,
-    panel:{x:def.panel[0]+0.5,y:def.panel[1]+0.5}, vaultDoor:{x:def.vaultDoor[0]+0.5,y:def.vaultDoor[1]+0.5}, required:def.required }});
+    entries:def.entries, panel:{x:def.panel[0]+0.5,y:def.panel[1]+0.5}, vaultDoor:{x:def.vaultDoor[0]+0.5,y:def.vaultDoor[1]+0.5}, required:def.required }});
   ev('info', '🎭 Ограбление началось: '+def.name+'. Вы в штатском — осмотритесь. G — надеть маску.');
   console.log('▶ Ограбление:', def.name, '| игроков:', humans.length, '| ботов:', 4-humans.length);
 }
@@ -787,7 +787,7 @@ wss.on('connection', ws=>{
     const bot = G.heisters.find(h=>h.isBot && !h.escaped);
     if(bot){ bot.isBot=false; bot.ctrl=id; bot.name=client.name; client.mask=bot.mask; client.weapon=bot.weapon;
       ws.send(JSON.stringify({ t:'heist', map:{ w:G.def.w,h:G.def.h,grid:G.grid,coverType:G.coverType,escape:G.def.escape,signs:G.def.signs,name:G.def.name,
-        panel:{x:G.def.panel[0]+0.5,y:G.def.panel[1]+0.5}, vaultDoor:{x:G.def.vaultDoor[0]+0.5,y:G.def.vaultDoor[1]+0.5}, required:G.def.required }}));
+        entries:G.def.entries, panel:{x:G.def.panel[0]+0.5,y:G.def.panel[1]+0.5}, vaultDoor:{x:G.def.vaultDoor[0]+0.5,y:G.def.vaultDoor[1]+0.5}, required:G.def.required }}));
       ev('info','🎮 '+client.name+' присоединился к ограблению!'); }
   }
   sendLobby();

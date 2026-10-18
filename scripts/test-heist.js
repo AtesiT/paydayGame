@@ -18,6 +18,7 @@ ws.on('message', raw=>{
   else if(m.t==='state'){ state=m;
     const me=m.heisters.find(h=>h.id===m.youId);
     if(me){ if(me.carry) sawCarry=true; }
+    if(m.heisters.some(h=>h.carry)) sawCarry=true; // сумку мог нести и бот-напарник
     if(m.drills.some(d=>d.state==='drilling')) sawDrilling=true;
   }
   else if(m.t==='end'){ endMsg=m.end; }

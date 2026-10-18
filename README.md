@@ -68,6 +68,7 @@ npm start                       # в отдельном терминале
 node scripts/test-client.js     # WS-протокол, боты, стрельба, тревога, волны
 node scripts/test-heist.js      # полный цикл: дрель, сумки, фургон, финал
 node scripts/test-client-ui.js  # клиентский JS в фейковом DOM: рендер и HUD без падений
+node scripts/render-shot.js after # PNG-скриншоты мира (нужен npm i --no-save @napi-rs/canvas)
 ```
 
 ## 📍 История
