@@ -17,6 +17,9 @@ const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript', '.cs
 const server = http.createServer((req, res) => {
   let url = decodeURIComponent(req.url.split('?')[0]);
   if (url === '/') url = '/public/index.html';
+  else if (url === '/vendor/three.module.js') url = '/node_modules/three/build/three.module.js';
+  else if (url === '/vendor/three.core.js') url = '/node_modules/three/build/three.core.js';
+  else if (url.startsWith('/vendor/addons/')) url = '/node_modules/three/examples/jsm/' + url.slice('/vendor/addons/'.length);
   else if (!url.startsWith('/concepts/') && !url.startsWith('/public/')) url = '/public' + url;
   const file = path.join(__dirname, url);
   if (!file.startsWith(__dirname)) { res.writeHead(403); return res.end(); }

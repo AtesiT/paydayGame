@@ -1,111 +1,97 @@
-'use strict';
-/* Смок-тест клиентского JS: фейковый DOM/Canvas + настоящий игровой сервер. */
+// UI-тест 3D-клиента в настоящем Chromium (WebGL/SwiftShader) через puppeteer-core.
+// Требует запущенный сервер (npm start) и браузер: /tmp/chromium + /tmp/stublibs (песочница)
+// либо CHROMIUM_PATH=/path/to/chrome. Без браузера тест пропускается (SKIP).
 const fs = require('fs');
-const vm = require('vm');
-const WebSocket = require('ws');
 
-let mainCtxCalls = 0;
-function makeCtx(isMain){
-  const target = {
-    measureText: () => ({ width: 42 }),
-    createRadialGradient: () => ({ addColorStop(){} }),
-    createLinearGradient: () => ({ addColorStop(){} }),
-    fillRect: () => { if (isMain) mainCtxCalls++; },
-  };
-  return new Proxy(target, {
-    get(t, p){ if (p in t) return t[p]; if (typeof p === 'symbol') return undefined; return () => {}; },
-    set(t, p, v){ t[p] = v; return true; },
+const CHROMIUM = process.env.CHROMIUM_PATH || '/tmp/chromium';
+if (!fs.existsSync(CHROMIUM)) { console.log('SKIP: браузер не найден (' + CHROMIUM + ')'); process.exit(0); }
+let puppeteer;
+try { puppeteer = require('puppeteer-core'); }
+catch { console.log('SKIP: puppeteer-core не установлен (npm i --no-save puppeteer-core)'); process.exit(0); }
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+setTimeout(() => { console.log('UI-ТЕСТ: жёсткий таймаут 9 минут (SwiftShader слишком медленный)'); process.exit(1); }, 9 * 60 * 1000);
+let failures = 0;
+const check = (name, ok, extra) => { console.log(`${ok ? '✔' : '✘'} ${name}${extra ? ' — ' + extra : ''}`); if (!ok) failures++; };
+
+(async () => {
+  const browser = await puppeteer.launch({
+    executablePath: CHROMIUM, headless: true,
+    env: { ...process.env, LD_LIBRARY_PATH: '/tmp/stublibs' },
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--window-size=1280,720',
+           '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio',
+           '--js-flags=--max-old-space-size=2048']
   });
-}
-class El {
-  constructor(id){ this.id=id||''; this.style={}; this.dataset={}; this.children=[]; this.value=''; this.textContent=''; this._html='';
-    this.classList={ toggle(){}, add(){}, remove(){} }; this.width=0; this.height=0; this.disabled=false; }
-  set innerHTML(v){ this._html=v; if(v==='') this.children=[]; }
-  get innerHTML(){ return this._html; }
-  get lastChild(){ return this.children[this.children.length-1] || { remove(){} }; }
-  prepend(c){ c._parent=this; this.children.unshift(c); }
-  appendChild(c){ c._parent=this; this.children.push(c); }
-  remove(){ if(this._parent){ const i=this._parent.children.indexOf(this); if(i>=0) this._parent.children.splice(i,1); } }
-  addEventListener(){}
-  getContext(){ return this._ctx || (this._ctx = makeCtx(this.id==='game')); }
-}
-const els = new Map();
-const documentStub = {
-  getElementById: id => { if(!els.has(id)) els.set(id, new El(id)); return els.get(id); },
-  createElement: () => new El(),
-  querySelectorAll: () => [],
-};
-const listeners = {};
-let rafCb = null, fakeWs = null;
+  const page = await browser.newPage();
+  page.setDefaultTimeout(150000); // главный поток надолго занят компиляцией шейдеров в SwiftShader
+  await page.setViewport({ width: 1280, height: 720 });
+  const errors = [];
+  page.on('pageerror', e => errors.push(String(e).slice(0, 200)));
 
-class FakeWebSocket {
-  constructor(url){ this.url=url; this.readyState=1; fakeWs=this; }
-  send(data){ if (realWs && realWs.readyState===1) realWs.send(data); }
-}
-const sandbox = {
-  console, setInterval, clearInterval, setTimeout, clearTimeout, Math, JSON, Object, Array, Map, Set, Date, Promise,
-  innerWidth: 1280, innerHeight: 800,
-  performance: { now: () => Date.now() },
-  localStorage: { getItem: () => null, setItem(){} },
-  location: { protocol: 'http:', host: 'localhost:3000' },
-  document: documentStub,
-  WebSocket: FakeWebSocket,
-  addEventListener: (ev, fn) => { (listeners[ev] = listeners[ev] || []).push(fn); },
-  requestAnimationFrame: cb => { rafCb = cb; },
-};
-sandbox.window = sandbox;
-sandbox.globalThis = sandbox;
+  await page.goto('http://localhost:3000/', { waitUntil: 'load', timeout: 60000 });
+  await sleep(6000);
+  const lobby = await page.evaluate(() => ({
+    masks: document.getElementById('maskCards').children.length,
+    heists: document.getElementById('heistCards').children.length,
+    players: document.getElementById('playersList').children.length,
+    gl: !!document.querySelector('#gl canvas'),
+    fallback: getComputedStyle(document.getElementById('fallback')).display
+  }));
+  check('лобби: карточки масок построены', lobby.masks === 4, 'masks=' + lobby.masks);
+  check('лобби: 3 ограбления', lobby.heists === 3, 'heists=' + lobby.heists);
+  check('лобби: список команды (игрок+боты)', lobby.players >= 4, 'players=' + lobby.players);
+  check('WebGL-канвас создан', lobby.gl && lobby.fallback === 'none');
 
-const html = fs.readFileSync(__dirname + '/../public/index.html', 'utf8');
-const code = html.match(/<script>([\s\S]*)<\/script>/)[1];
+  await page.waitForSelector('#startBtn:not([disabled])', { timeout: 30000 }).catch(() => {});
+  await page.click('#startBtn');
+  const ev = async (fn) => { try { return await page.evaluate(fn); } catch { return null; } };
+  await page.mouse.move(640, 300).catch(() => {});
+  // SwiftShader: главный поток надолго занят компиляцией шейдеров, CDP-запросы висят.
+  // Один терпеливый цикл: периодически жмём G и ждём, пока в стейте появится маска.
+  let masked = false;
+  for (let i = 0; i < 14 && !masked; i++) {
+    await page.keyboard.press('KeyG').catch(() => {});
+    try {
+      await page.waitForFunction(() => {
+        const s = window.__nv84.state; if (!s) return false;
+        const me = s.heisters.find(h => h.id === s.youId);
+        return !!(me && me.masked);
+      }, { timeout: 25000, polling: 1000 });
+      masked = true;
+    } catch { /* поток ещё занят — пробуем ещё */ }
+  }
+  check('ограбление стартовало, стейты идут, G — маска надевается', masked);
+  if (!masked) { await browser.close(); console.log('\nUI-ТЕСТ: СТАРТ/МАСКА НЕ УДАЛИСЬ'); process.exit(1); }
 
-let realWs = null, errors = [], frames = 0, gotHeist = false, gotState = false;
-try { vm.runInNewContext(code, sandbox, { filename: 'client.js' }); console.log('✅ клиентский скрипт загрузился без ошибок'); }
-catch (e) { console.log('❌ ОШИБКА ЗАГРУЗКИ:', e.message); process.exit(1); }
+  await page.mouse.down().catch(() => {});
+  let shot = false;
+  for (let i = 0; i < 25 && !shot; i++) {
+    shot = await ev(() => {
+      const s = window.__nv84.state; if (!s) return false;
+      const me = s.heisters.find(h => h.id === s.youId);
+      return s.bullets.length > 0 || (me && (me.mag < 30 || me.reserve < 150));
+    });
+    if (!shot) await sleep(700);
+  }
+  await page.mouse.up().catch(() => {});
+  check('ЛКМ — стрельба работает (пули/патроны)', shot === true);
 
-realWs = new WebSocket(process.env.GAME_URL || 'ws://localhost:3000');
-realWs.on('message', raw => {
-  const data = raw.toString();
-  const m = JSON.parse(data);
-  if (m.t === 'heist') gotHeist = true;
-  if (m.t === 'state') gotState = true;
-  try { fakeWs.onmessage({ data }); }
-  catch (e) { errors.push('onmessage(' + m.t + '): ' + e.message + '\n' + e.stack.split('\n')[1]); }
-});
+  const hud = await ev(() => ({
+    ammo: document.getElementById('ammoVal').textContent,
+    obj: document.getElementById('objList').textContent.length,
+    money: document.getElementById('moneyVal').textContent
+  })) || { ammo: '', obj: 0, money: '' };
+  check('HUD: патроны/деньги/цели заполнены', /\d/.test(hud.ammo) && hud.obj > 3 && hud.money.includes('$'), JSON.stringify(hud));
 
-// качаем кадры рендера
-const framePump = setInterval(() => {
-  if (rafCb) { const cb = rafCb; rafCb = null;
-    try { cb(); frames++; } catch (e) { errors.push('render: ' + e.message + '\n' + (e.stack.split('\n')[1]||'')); } }
-}, 33);
-
-// сценарий: кликнуть старт, надеть маску, пострелять мышью
-setTimeout(() => {
-  const btn = els.get('startBtn');
-  try { btn.onclick && btn.onclick(); console.log('▶ кликнута кнопка «НА ДЕЛО»'); } catch(e){ errors.push('startBtn: '+e.message); }
-}, 700);
-setTimeout(() => {
+  let rendered = true;
   try {
-    (listeners.keydown||[]).forEach(fn => fn({ code:'KeyG', target:{tagName:'BODY'}, preventDefault(){}, repeat:false }));
-    (listeners.mousemove||[]).forEach(fn => fn({ clientX: 700, clientY: 300 }));
-    (listeners.mousedown||[]).forEach(fn => fn({ button:0, target: els.get('game') }));
-    console.log('⌨️ симулированы G (маска) + мышь + выстрел');
-  } catch(e){ errors.push('input: '+e.message); }
-}, 2500);
+    await page.waitForFunction(() => window.__nv84.frames > 3, { timeout: 120000, polling: 3000 });
+  } catch { rendered = false; }
+  const frames = await ev(() => window.__nv84.frames);
+  check('3D-кадры рендерятся (WebGL)', rendered, 'frames=' + frames);
 
-setTimeout(() => {
-  clearInterval(framePump); realWs.close();
-  const obj = els.get('objList'), team = els.get('team');
-  const checks = [
-    ['кадров отрендерено ('+frames+'), вызовов fillRect на главном канвасе: '+mainCtxCalls, frames > 30 && mainCtxCalls > 100],
-    ['получены heist+state и прогнаны через клиент', gotHeist && gotState],
-    ['HUD: цели отрисованы', obj && obj.innerHTML.includes('▸')],
-    ['HUD: карточки команды отрисованы', team && team.innerHTML.includes('mate')],
-    ['нет runtime-ошибок', errors.length === 0],
-  ];
-  let bad = 0;
-  for (const [n, ok] of checks) { console.log(ok ? '✅' : '❌', n); if(!ok) bad++; }
-  errors.slice(0,5).forEach(e => console.log('   🐞', e));
-  console.log(bad ? '\n💥 UI-ТЕСТ ПРОВАЛЕН' : '\n🎉 UI-ТЕСТ ПРОЙДЕН: клиент рендерит и не падает');
-  process.exit(bad ? 1 : 0);
-}, 11000);
+  check('нет необработанных ошибок на странице', errors.length === 0, errors[0] || '');
+  await browser.close();
+  console.log(failures ? `\nUI-ТЕСТ: ${failures} ПРОВАЛОВ` : '\nUI-ТЕСТ ПРОЙДЕН ✔');
+  process.exit(failures ? 1 : 0);
+})().catch(e => { console.error('UI-ТЕСТ УПАЛ:', e.message); process.exit(1); });
