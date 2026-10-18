@@ -57,8 +57,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await sleep(700);
   await page.mouse.up();
   const spots = await page.evaluate(() => ({
-    hall: { x: window.__nv84.map.w / 2, y: window.__nv84.map.h * 0.52, dist: 12.5 },
-    vault: { x: window.__nv84.map.vaultDoor.x, y: window.__nv84.map.vaultDoor.y + 2.4, dist: 9.5 }
+    hall: { x: window.__nv84.map.w / 2, y: window.__nv84.map.h * 0.52, dist: 10.5 },
+    vault: { x: window.__nv84.map.vaultDoor.x, y: window.__nv84.map.vaultDoor.y + 2.4, dist: 9.5 },
+    close: { x: 7.5, y: window.__nv84.map.h * 0.6, dist: 7.4 }
   }));
   const waitFrames = async (n) => {
     const f0 = await page.evaluate(() => window.__nv84.frames);
@@ -73,6 +74,21 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await waitFrames(7);
   await page.screenshot({ path: path.join(OUT, `${TAG}-${HEIST}-inside.png`) });
   console.log('shot: inside (hall)');
+
+  // крупный план: камера на центроид команды по живому стейту
+  const dynClose = await page.evaluate(() => {
+    const s = window.__nv84.state;
+    const hs = s.heisters.filter(h => !h.escaped);
+    const cx = hs.reduce((a, h) => a + h.x, 0) / hs.length;
+    const cy = hs.reduce((a, h) => a + h.y, 0) / hs.length;
+    const c = { x: cx, y: cy, dist: 6.4 };
+    window.__nv84.cam = c;
+    return c;
+  });
+  console.log('dynamic close at', JSON.stringify(dynClose));
+  await waitFrames(8);
+  await page.screenshot({ path: path.join(OUT, `${TAG}-${HEIST}-close.png`) });
+  console.log('shot: close (team)');
 
   const info = await page.evaluate(() => ({
     frames: window.__nv84.frames,
