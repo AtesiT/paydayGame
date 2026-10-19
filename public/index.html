@@ -247,7 +247,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 /* ================= БАЗА / СЕТЬ ================= */
 const $ = id => document.getElementById(id);
 const MASK_ICONS = { tiger:'🐯', wolf:'🐺', panda:'🐼', shark:'🦈' };
-const SUITS = ['#EDA4C0','#A8C8EC','#8FE3D0','#F2EBDC'];
+const SUITS = ['#E79CBC','#93B8E4','#7FD8C4','#E4DCC8'];
 const SUITS_CIV = ['#8E93A8','#7E8AA0','#978EA8','#A89B7E'];
 let myId=null, MASKS={}, WEAPONS={}, selMask='tiger', selWeapon='rifle', selHeist='bank', isHost=false;
 let map=null, state=null, pendingState=null, inGame=false, endShown=false;
@@ -495,7 +495,7 @@ const MATS = {}, GEOS = {};
 const TEX = {};
 /* ===== ТЕКСТУРЫ-АССЕТЫ (v7): настоящие картинки из public/assets ===== */
 const IMGS = {};
-for (const k of ['marble','wallpanel','walnut','fabric','steel','carpet','sunset','money','asphalt','leather']) {
+for (const k of ['marble','wallpanel','walnut','fabric','steel','carpet','sunset','money','asphalt','leather','hair','fur','skin']) {
   const im = new Image(); im.onload = () => { IMGS[k] = im; }; im.src = '/assets/' + k + '.jpg';
 }
 function imgTex(key, rx = 1, ry = 1) {
@@ -590,6 +590,8 @@ function brushedNormal(){
 }
 const pbrCache=new Map();
 function pbr(key, params){ if(!pbrCache.has(key)) pbrCache.set(key, new THREE.MeshStandardMaterial(params)); return pbrCache.get(key); }
+const physCache=new Map();
+function pbrCloth(key, params){ if(!physCache.has(key)) physCache.set(key, new THREE.MeshPhysicalMaterial({sheen:0.35, sheenRoughness:0.65, sheenColor:new THREE.Color(0x9790B8), ...params})); return physCache.get(key); }
 function steelMat(){ const m=metalMaps(), si=imgTex('steel',2,2); return pbr('steel', {map:si||m.map, color:si?0xC7D0E6:0x97A3C2, roughnessMap:m.rough, roughness:1, metalness:0.9, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.35,0.35), bumpMap:imgBump('steel',2,2), bumpScale:0.3, envMapIntensity:1.15}); }
 function darkSteelMat(){ const m=metalMaps(), si=imgTex('steel',2,2); return pbr('dsteel', {map:si||m.map, color:si?0x7E8AB0:0x4A5474, roughnessMap:m.rough, roughness:1, metalness:0.85, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.3,0.3), bumpMap:imgBump('steel',2,2), bumpScale:0.3, envMapIntensity:1.05}); }
 function brassMat(){ const m=metalMaps(), si=imgTex('steel',2,2); return pbr('brass', {map:si||m.map, color:si?0xEFC65C:0xD9AE2E, roughnessMap:m.rough, roughness:0.85, metalness:0.85, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.2,0.2), bumpMap:imgBump('steel',2,2), bumpScale:0.2, envMapIntensity:1.2}); }
@@ -2012,7 +2014,7 @@ function buildVan(esc){
 function std(color, rough=0.7, metal=0.04){ return new THREE.MeshStandardMaterial({color, roughness:rough, metalness:metal}); }
 const clothCache = new Map();
 function clothMat(color){
-  if(!clothCache.has(color)) clothCache.set(color, new THREE.MeshStandardMaterial({
+  if(!clothCache.has(color)) clothCache.set(color, new THREE.MeshPhysicalMaterial({sheen:0.32, sheenRoughness:0.65, sheenColor:new THREE.Color(0x8F88B0),
     map:imgTex('fabric',2,2), bumpMap:imgBump('fabric',2,2), bumpScale:0.4, color, roughness:0.95, metalness:0.02, roughnessMap:suitRough(), normalMap:clothNormal(), normalScale:new THREE.Vector2(0.5,0.5), envMapIntensity:0.35}));
   return clothCache.get(color);
 }
@@ -2056,23 +2058,33 @@ function foldShade(g,w,h,n=12){ // затенение складок в цвет
 function suitTexture(hex){
   const key='suit_'+hex; if(TEX[key]) return TEX[key];
   const css='#'+(hex>>>0).toString(16).padStart(6,'0');
-  TEX[key]=canvasTex(256,256,(g)=>{
-    g.fillStyle=css; g.fillRect(0,0,256,256);
-    for(let i=0;i<12;i++){ const x0=Math.random()*256,y0=Math.random()*256,r=30+Math.random()*70; // крупные пятна тона
+  TEX[key]=canvasTex(512,512,(g)=>{
+    g.fillStyle=css; g.fillRect(0,0,512,512);
+    for(let i=0;i<16;i++){ const x0=Math.random()*512,y0=Math.random()*512,r=50+Math.random()*130;
       const rg=g.createRadialGradient(x0,y0,2,x0,y0,r);
       rg.addColorStop(0,`rgba(${Math.random()<.5?'255,255,255':'0,0,0'},.05)`); rg.addColorStop(1,'rgba(0,0,0,0)');
       g.fillStyle=rg; g.fillRect(x0-r,y0-r,r*2,r*2); }
-    for(let x=0;x<256;x+=16){ g.fillStyle='rgba(255,255,255,.10)'; g.fillRect(x,0,2,256);
-      g.fillStyle='rgba(0,0,0,.13)'; g.fillRect(x+3,0,1.5,256); }
-    foldShade(g,256,256,11);
-    for(let i=0;i<700;i++){ g.fillStyle='rgba('+(Math.random()>0.5?'255,255,255':'0,0,0')+','+(Math.random()*0.05)+')';
-      g.fillRect(Math.random()*256,Math.random()*256,1.6,1.6); }
-    const gr=g.createLinearGradient(0,0,256,0);
+    for(let x=0;x<512;x+=24){ g.fillStyle='rgba(255,255,255,.09)'; g.fillRect(x,0,2,512);
+      g.fillStyle='rgba(0,0,0,.11)'; g.fillRect(x+4,0,1.5,512); }
+    foldShade(g,512,512,17);
+    // швы: центр спинки (u=0.5) и боковые
+    g.fillStyle='rgba(0,0,0,.30)'; g.fillRect(255,0,2.5,512);
+    g.fillStyle='rgba(255,255,255,.10)'; g.fillRect(258.5,0,1.2,512);
+    g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(127,0,1.8,512); g.fillRect(383,0,1.8,512);
+    // шлица сзади внизу
+    g.fillStyle='rgba(0,0,0,.28)'; g.fillRect(248,452,16,60);
+    g.fillStyle='rgba(255,255,255,.07)'; g.fillRect(248,452,16,2);
+    for(let i=0;i<1800;i++){ g.fillStyle='rgba('+(Math.random()>0.5?'255,255,255':'0,0,0')+','+(Math.random()*0.05)+')';
+      g.fillRect(Math.random()*512,Math.random()*512,1.6,1.6); }
+    const gr=g.createLinearGradient(0,0,512,0);
     gr.addColorStop(0,'rgba(0,0,0,.16)'); gr.addColorStop(0.5,'rgba(255,255,255,.05)'); gr.addColorStop(1,'rgba(0,0,0,.16)');
-    g.fillStyle=gr; g.fillRect(0,0,256,256);
-    const gb=g.createLinearGradient(0,190,0,256); // лёгкое затемнение книзу (AO)
-    gb.addColorStop(0,'rgba(0,0,0,0)'); gb.addColorStop(1,'rgba(0,0,0,.14)');
-    g.fillStyle=gb; g.fillRect(0,190,256,66);
+    g.fillStyle=gr; g.fillRect(0,0,512,512);
+    const gt=g.createLinearGradient(0,0,0,110); // плечи чуть светлее
+    gt.addColorStop(0,'rgba(255,255,255,.07)'); gt.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=gt; g.fillRect(0,0,512,110);
+    const gb=g.createLinearGradient(0,380,0,512); // AO книзу
+    gb.addColorStop(0,'rgba(0,0,0,0)'); gb.addColorStop(1,'rgba(0,0,0,.16)');
+    g.fillStyle=gb; g.fillRect(0,380,512,132);
   });
   TEX[key].wrapS=THREE.RepeatWrapping; return TEX[key];
 }
@@ -2089,7 +2101,7 @@ function suitRough(){
   });
   TEX.suitRgh.wrapS=THREE.RepeatWrapping; return TEX.suitRgh;
 }
-function suitMat(hex){ return pbr('suitM'+hex,{map:suitTexture(hex), color:0xFFFFFF, roughnessMap:suitRough(), roughness:1, metalness:0.02, normalMap:clothNormal(), normalScale:new THREE.Vector2(0.55,0.55), bumpMap:imgBump('fabric',3,3), bumpScale:0.45, envMapIntensity:0.35}); }
+function suitMat(hex){ return pbrCloth('suitM'+hex,{map:suitTexture(hex), color:0xFFFFFF, roughnessMap:suitRough(), roughness:1, metalness:0.02, normalMap:clothNormal(), normalScale:new THREE.Vector2(0.55,0.55), bumpMap:imgBump('fabric',3,3), bumpScale:0.45, envMapIntensity:0.35}); }
 function pantsTexture(hex){
   const key='pants_'+hex; if(TEX[key]) return TEX[key];
   const css='#'+(hex>>>0).toString(16).padStart(6,'0');
@@ -2104,14 +2116,18 @@ function pantsTexture(hex){
       g.fillStyle=gr; g.fillRect(cx-7,0,14,256); };
     crease(0); crease(256);
     g.fillStyle='rgba(0,0,0,.16)'; g.fillRect(118,0,20,256); // тень сзади
+    g.fillStyle='rgba(0,0,0,.22)'; g.fillRect(0,238,256,18);            // манжета у щиколотки
+    g.fillStyle='rgba(255,255,255,.10)'; g.fillRect(0,238,256,2);
+    g.fillStyle='rgba(0,0,0,.18)'; g.fillRect(0,0,256,14);              // пояс брюк
   });
   TEX[key].wrapS=THREE.RepeatWrapping; return TEX[key];
 }
-function pantsMat(hex){ return pbr('pantsM'+hex,{map:pantsTexture(hex), color:0xFFFFFF, roughnessMap:suitRough(), roughness:1, metalness:0.0, normalMap:clothNormal(), normalScale:new THREE.Vector2(0.5,0.5), bumpMap:imgBump('fabric',3,3), bumpScale:0.4, envMapIntensity:0.3}); }
+function pantsMat(hex){ return pbrCloth('pantsM'+hex,{map:pantsTexture(hex), color:0xFFFFFF, roughnessMap:suitRough(), roughness:1, metalness:0.0, normalMap:clothNormal(), normalScale:new THREE.Vector2(0.5,0.5), bumpMap:imgBump('fabric',3,3), bumpScale:0.4, envMapIntensity:0.3}); }
 function skinTexture(){
   if(TEX.skinT) return TEX.skinT;
   TEX.skinT=canvasTex(256,256,(g)=>{
     g.fillStyle='#F4E9E0'; g.fillRect(0,0,256,256);
+    if(IMGS.skin){ drawImgCover(g,IMGS.skin,0,0,256,256,0.55); return; }
     for(let i=0;i<46;i++){ const x0=Math.random()*256,y0=Math.random()*256,r=14+Math.random()*46;
       const rg=g.createRadialGradient(x0,y0,1,x0,y0,r);
       rg.addColorStop(0,`rgba(${Math.random()<.55?'198,138,105':'255,236,216'},${0.05+Math.random()*0.06})`);
@@ -2141,6 +2157,11 @@ function hairTexture(hex){
   const key='hairT_'+hex; if(TEX[key]) return TEX[key];
   const base=new THREE.Color(hex);
   TEX[key]=canvasTex(256,256,(g)=>{
+    if(IMGS.hair){ drawImgCover(g,IMGS.hair,0,0,256,256);
+      g.globalCompositeOperation='multiply'; g.fillStyle='#'+base.clone().multiplyScalar(2.3).getHexString(); g.fillRect(0,0,256,256);
+      g.globalCompositeOperation='source-over';
+      const gr2=g.createLinearGradient(0,0,0,256); gr2.addColorStop(0,'rgba(0,0,0,.18)'); gr2.addColorStop(0.4,'rgba(0,0,0,0)'); gr2.addColorStop(1,'rgba(255,255,255,.05)');
+      g.fillStyle=gr2; g.fillRect(0,0,256,256); return; }
     g.fillStyle='#'+base.getHexString(); g.fillRect(0,0,256,256);
     for(let x=0;x<256;x+=2){ // пряди: волны сверху вниз с вариацией тона
       const c2=base.clone(); c2.offsetHSL(0, (Math.random()-0.5)*0.03, (Math.random()-0.5)*0.17);
@@ -2276,7 +2297,7 @@ function buildHand(skinM, side){
 function buildHair(colorHex, seed, female){ // полноценная причёска БЕЗ лысин: шапка + затылок полностью закрывают череп
   const g=new THREE.Group();
   const style = female ? (seed%2) : (seed%4);
-  const hairM=pbr('hair'+colorHex,{map:hairTexture(colorHex), color:0xFFFFFF, roughness:0.5, metalness:0, normalMap:hairNormal(), normalScale:new THREE.Vector2(0.6,0.6), envMapIntensity:0.65});
+  const hairM=pbr('hair'+colorHex,{map:hairTexture(colorHex), color:0xFFFFFF, roughness:0.5, metalness:0, normalMap:hairNormal(), normalScale:new THREE.Vector2(0.6,0.6), bumpMap:imgBump('hair',2,2), bumpScale:0.5, envMapIntensity:0.65});
   const capR = style===3&&!female ? 0.158 : 0.152;
   const cap=mesh(new THREE.SphereGeometry(capR,28,20,0,Math.PI*2,0,female?1.95:1.74), hairM, 0,0.028,-0.006,false);
   cap.scale.set(0.99,1.09,1.0); cap.rotation.x = (style===2&&!female) ? -0.52 : -0.4; g.add(cap);
@@ -2310,11 +2331,11 @@ function buildMask(maskId, col){ // цельная голова животног
   const mg=new THREE.Group();
   const neon=new THREE.Color(col);
   const baseCol={tiger:0xDE7A30, wolf:0x46587A, panda:0xF2EEE6, shark:0x2E4A74}[maskId]||0x888888;
-  const baseM=pbr('maskbase'+maskId,{color:baseCol, roughness:0.55, metalness:0.05, emissive:neon.getHex(), emissiveIntensity:0.22, normalMap:fabricNormal(), normalScale:new THREE.Vector2(0.35,0.35)});
-  const headM=mesh(sph(0.168,36,26), baseM, 0,0.008,0); headM.scale.set(0.99,1.05,1.02); mg.add(headM);
+  const baseM=pbr('maskbase'+maskId,{map:imgTex('fur',3,3), color:baseCol, roughness:0.55, metalness:0.05, emissive:neon.getHex(), emissiveIntensity:0.22, normalMap:fabricNormal(), normalScale:new THREE.Vector2(0.35,0.35), bumpMap:imgBump('fur',3,3), bumpScale:0.35});
+  const headM=mesh(sph(0.168,36,26), baseM, 0,0.008,0); headM.scale.set(0.94,1.02,0.98); mg.add(headM);
   const face=new THREE.Mesh(new THREE.SphereGeometry(0.173,40,26, Math.PI/2-1.25, 2.5, 0.5, 1.95),
     new THREE.MeshBasicMaterial({map:maskTexture(maskId,col), transparent:true, toneMapped:false, color:new THREE.Color(1.45,1.45,1.45)}));
-  face.scale.set(0.99,1.05,1.02); face.position.y=0.008; mg.add(face);
+  face.scale.set(0.94,1.02,0.98); face.position.y=0.008; mg.add(face);
   const glowM=new THREE.MeshBasicMaterial({color:neon.clone().multiplyScalar(2.6), toneMapped:false});
   const eyeZ = maskId==='panda' ? 0.16 : 0.152;
   for(const s of [-1,1]){ const eye=mesh(sph(0.017,12,10), glowM, s*0.058,0.03,eyeZ,false);
@@ -2381,7 +2402,7 @@ function buildCharacter(kind, e, slotIdx){
   const body=new THREE.Group(); root.add(body);
   const parts={root,body};
   let suit, pants=0x23233A, skin=0xF2C9A4, scale=1, vest=null, helmet=null, cap=null, hair=0x33231A, tieC=0x20203A, female=false;
-  if(kind==='h'){ suit=new THREE.Color(SUITS[slotIdx%4]).getHex(); tieC=new THREE.Color((MASKS[e.mask]||{}).color||'#553366').multiplyScalar(0.55).getHex(); }
+  if(kind==='h'){ suit=new THREE.Color(SUITS[slotIdx%4]).getHex(); pants=new THREE.Color(suit).multiplyScalar(0.8).getHex(); tieC=new THREE.Color((MASKS[e.mask]||{}).color||'#553366').multiplyScalar(0.55).getHex(); }
   else if(kind==='g'){ suit=0x2B3A6E; cap=0x1D2A55; tieC=0x141C38; }
   else if(kind==='c'){ suit=new THREE.Color().setHSL((e.hue||0)/360,0.36,0.44).getHex(); hair=[0x33231A,0x151312,0x6E4B2A,0x8C8C94,0x4A2E20][e.id%5]; female=(e.id%3===0); if(female) pants=skin; }
   else if(e.type==='cop'){ suit=0x2E4A9E; cap=0x22336B; tieC=0x141C38; }
@@ -2396,13 +2417,13 @@ function buildCharacter(kind, e, slotIdx){
   const shoeGeo=buildShoeGeo();
   const shoeM=leatherMat(0x1A1016);
   const mkLeg=(side)=>{
-    const hip=new THREE.Group(); hip.position.set(0.1*side,0.88,0);
-    hip.add(mesh(limbGeo('thigh',0.44,[[0,0.080],[0.12,0.084],[0.3,0.082],[0.55,0.070],[0.8,0.060],[0.95,0.055],[1,0.048]]), pantsM, 0,0.012,0));
-    hip.add(mesh(sph(0.062,14,10), pantsM, 0,-0.02,0,false));
+    const hip=new THREE.Group(); hip.position.set(0.09*side,0.88,0);
+    hip.add(mesh(limbGeo('thigh',0.44,[[0,0.074],[0.12,0.077],[0.3,0.075],[0.55,0.064],[0.8,0.055],[0.95,0.051],[1,0.044]]), pantsM, 0,0.012,0));
+    hip.add(mesh(sph(0.056,14,10), pantsM, 0,-0.02,0,false));
     const knee=new THREE.Group(); knee.position.set(0,-0.44,0); hip.add(knee);
-    knee.add(mesh(sph(0.056,14,10), pantsM, 0,0,0.008,false));
-    knee.add(mesh(limbGeo('shin',0.385,[[0,0.056],[0.15,0.058],[0.35,0.050],[0.6,0.043],[0.88,0.039],[1,0.043]]), pantsM, 0,0.01,0));
-    const calf=mesh(sph(0.052,18,14), pantsM, 0,-0.13,-0.018,false); calf.scale.set(0.95,1.3,0.95); knee.add(calf); // икра
+    knee.add(mesh(sph(0.051,14,10), pantsM, 0,0,0.008,false));
+    knee.add(mesh(limbGeo('shin',0.385,[[0,0.052],[0.15,0.053],[0.35,0.046],[0.6,0.040],[0.88,0.036],[1,0.040]]), pantsM, 0,0.01,0));
+    const calf=mesh(sph(0.048,18,14), pantsM, 0,-0.13,-0.018,false); calf.scale.set(0.95,1.3,0.95); knee.add(calf); // икра
     const shoe=mesh(shoeGeo, shoeM, 0,-0.44,0.008); knee.add(shoe);
     knee.add(mesh(box(0.1,0.035,0.09), shoeM, 0,-0.425,-0.085,false));               // каблук
     if(e.type==='dozer'){ const pad=mesh(sph(0.085,12,10), darkSteelMat(), 0,-0.14,0.055,false);
@@ -2411,33 +2432,34 @@ function buildCharacter(kind, e, slotIdx){
   };
   const legL=mkLeg(-1), legR=mkLeg(1);
   parts.legL=legL.hip; parts.kneeL=legL.knee; parts.legR=legR.hip; parts.kneeR=legR.knee;
-  body.add(mesh(rbox(0.34,0.22,0.23,0.06), pantsM, 0,0.93,0));                        // таз
-  if(female){ const sk=mesh(new THREE.CylinderGeometry(0.19,0.27,0.34,18,1,true), suitM, 0,0.74,0); body.add(sk); }
+  body.add(mesh(rbox(0.30,0.21,0.21,0.06), pantsM, 0,0.93,0));                        // таз
+  if(female){ const sk=mesh(new THREE.CylinderGeometry(0.17,0.24,0.34,18,1,true), suitM, 0,0.74,0); body.add(sk); }
   /* ---------- торс (lathe-профиль) ---------- */
   const torsoPts=[[0.02,0],[0.175,0],[0.198,0.05],[0.2,0.1],[0.186,0.2],[0.172,0.3],[0.176,0.38],[0.192,0.46],[0.208,0.53],[0.204,0.58],[0.178,0.63],[0.12,0.67],[0.055,0.69],[0.02,0.7]]
     .map(p=>new THREE.Vector2(p[0],p[1]));
   if(!GEOS.torso) GEOS.torso=new THREE.LatheGeometry(torsoPts,52);
-  const torso=mesh(GEOS.torso, suitM, 0,0.84,0); torso.scale.set(1.06,1,0.76); body.add(torso);
-  const belt=mesh(cyl(0.21,0.215,0.055,20), leatherMat(0x120E1E), 0,0.96,0,false); belt.scale.set(1.06,1,0.76); body.add(belt);
-  body.add(mesh(box(0.055,0.04,0.02), brassMat(), 0,0.96,0.165,false));                // пряжка
+  const torso=mesh(GEOS.torso, suitM, 0,0.84,0); torso.scale.set(0.94,1.02,0.70); body.add(torso);
+  if(!vest){ const skirt=mesh(limbGeo('jskirt',0.17,[[0,0.178],[0.45,0.192],[0.85,0.205],[1,0.208]]), suitM, 0,1.005,0); skirt.scale.set(0.96,1,0.72); body.add(skirt); } // пола пиджака
+  const belt=mesh(cyl(0.188,0.192,0.055,20), leatherMat(0x120E1E), 0,0.985,0,false); belt.scale.set(0.95,1,0.73); body.add(belt);
+  body.add(mesh(box(0.055,0.04,0.02), brassMat(), 0,0.985,0.148,false));                // пряжка
   if(kind==='g'||e.type==='cop'||e.type==='swat'||e.type==='shield'){
-    body.add(mesh(rbox(0.07,0.17,0.1,0.015), leatherMat(0x140F14), 0.215,0.88,0.03,false));  // кобура
-    body.add(mesh(rbox(0.06,0.09,0.05,0.01), leatherMat(0x140F14), -0.2,0.92,-0.06,false));   // чехол наручников
-    if(kind==='g'||e.type==='cop'){ const bat=mesh(cyl(0.014,0.017,0.34,8), std(0x1A1420,0.5), -0.23,0.78,0.05,false);
+    body.add(mesh(rbox(0.07,0.17,0.1,0.015), leatherMat(0x140F14), 0.19,0.88,0.03,false));  // кобура
+    body.add(mesh(rbox(0.06,0.09,0.05,0.01), leatherMat(0x140F14), -0.182,0.92,-0.06,false));   // чехол наручников
+    if(kind==='g'||e.type==='cop'){ const bat=mesh(cyl(0.014,0.017,0.34,8), std(0x1A1420,0.5), -0.208,0.78,0.05,false);
       bat.rotation.z=0.25; body.add(bat); }                                                  // дубинка
   }
   if(vest){
     const vestMesh=mesh(GEOS.torso, pbr('vest'+vest,{color:vest, roughness:0.6, metalness:0.15, normalMap:fabricNormal(), normalScale:new THREE.Vector2(0.5,0.5)}), 0,0.86,0);
-    vestMesh.scale.set(1.24,0.9,0.95); body.add(vestMesh);
-    for(const px of [-0.115,0,0.115]) body.add(mesh(rbox(0.1,0.13,0.06,0.015), suitDark, px,1.06,0.2,false));
-    body.add(mesh(rbox(0.3,0.34,0.05,0.02), suitDark, 0,1.2,-0.19,false));             // спинная плита
+    vestMesh.scale.set(1.10,0.92,0.86); body.add(vestMesh);
+    for(const px of [-0.115,0,0.115]) body.add(mesh(rbox(0.1,0.13,0.06,0.015), suitDark, px,1.06,0.185,false));
+    body.add(mesh(rbox(0.3,0.34,0.05,0.02), suitDark, 0,1.2,-0.175,false));             // спинная плита
     const vestTxt={swat:'SWAT',shield:'SWAT',dozer:'DOZER'}[e.type]||'POLICE';
     if(!TEX['vest_'+vestTxt]) TEX['vest_'+vestTxt]=canvasTex(256,96,(gg)=>{ gg.clearRect(0,0,256,96);
       gg.font='900 60px "Segoe UI"'; gg.textAlign='center'; gg.fillStyle='#EAF6FF'; gg.shadowColor='#7DF4FF'; gg.shadowBlur=8;
       gg.fillText(vestTxt,128,66); });
     const vlab=new THREE.Mesh(new THREE.PlaneGeometry(0.28,0.105), new THREE.MeshBasicMaterial({map:TEX['vest_'+vestTxt], transparent:true, toneMapped:false}));
-    vlab.position.set(0,1.24,-0.218); vlab.rotation.y=Math.PI; body.add(vlab);
-    for(const s of [-1,1]){ const pad=mesh(sph(0.105,14,10), std(vest,0.5,0.2), s*0.26,1.44,0,false);
+    vlab.position.set(0,1.24,-0.20); vlab.rotation.y=Math.PI; body.add(vlab);
+    for(const s of [-1,1]){ const pad=mesh(sph(0.105,14,10), std(vest,0.5,0.2), s*0.235,1.44,0,false);
       pad.scale.set(1.05,0.62,1.05); body.add(pad); }
     if(e.type==='dozer'){
       body.add(mesh(rbox(0.42,0.42,0.08,0.03), pbr('dozplate',{color:0x5E2436, roughness:0.32, metalness:0.65, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.3,0.3)}), 0,1.18,0.2));
@@ -2448,26 +2470,26 @@ function buildCharacter(kind, e, slotIdx){
   } else {
     // рубашка-треугольник, лацканы, галстук (экструзии)
     const shirtShape=new THREE.Shape(); shirtShape.moveTo(0,0.15); shirtShape.lineTo(-0.078,-0.04); shirtShape.lineTo(0.078,-0.04); shirtShape.closePath();
-    const shirt=mesh(new THREE.ExtrudeGeometry(shirtShape,{depth:0.014,bevelEnabled:false}), pbr('shirt',{color:0xF4F1E8, roughness:0.85, normalMap:fabricNormal(), normalScale:new THREE.Vector2(0.3,0.3)}), 0,1.36,0.146,false);
+    const shirt=mesh(new THREE.ExtrudeGeometry(shirtShape,{depth:0.014,bevelEnabled:false}), pbr('shirt',{color:0xF4F1E8, roughness:0.85, normalMap:fabricNormal(), normalScale:new THREE.Vector2(0.3,0.3)}), 0,1.36,0.134,false);
     shirt.rotation.x=-0.16; body.add(shirt);
     const lapShape=new THREE.Shape(); lapShape.moveTo(0,0.15); lapShape.lineTo(0.075,0.02); lapShape.lineTo(0.03,-0.14); lapShape.closePath();
-    for(const s of [-1,1]){ const lap=mesh(new THREE.ExtrudeGeometry(lapShape,{depth:0.012,bevelEnabled:false}), suitDark, s*0.028,1.37,0.15,false);
+    for(const s of [-1,1]){ const lap=mesh(new THREE.ExtrudeGeometry(lapShape,{depth:0.012,bevelEnabled:false}), suitDark, s*0.028,1.37,0.138,false);
       lap.rotation.x=-0.16; lap.rotation.y=s*0.22; if(s<0) lap.scale.x=-1; body.add(lap); }
     const tieShape=new THREE.Shape();
     tieShape.moveTo(0,0.16); tieShape.lineTo(0.028,0.09); tieShape.lineTo(0.021,-0.13); tieShape.lineTo(0,-0.19); tieShape.lineTo(-0.021,-0.13); tieShape.lineTo(-0.028,0.09); tieShape.closePath();
-    const tie=mesh(new THREE.ExtrudeGeometry(tieShape,{depth:0.011,bevelEnabled:false}), clothMat(tieC), 0,1.32,0.162,false);
+    const tie=mesh(new THREE.ExtrudeGeometry(tieShape,{depth:0.011,bevelEnabled:false}), clothMat(tieC), 0,1.32,0.150,false);
     tie.rotation.x=-0.15; body.add(tie);
-    body.add(mesh(rbox(0.052,0.048,0.02,0.008), clothMat(tieC), 0,1.465,0.152,false));
-    for(const s of [-1,1]){ const panel=mesh(rbox(0.085,0.44,0.018,0.008), suitM, s*0.09,1.17,0.136,false);
+    body.add(mesh(rbox(0.052,0.048,0.02,0.008), clothMat(tieC), 0,1.465,0.140,false));
+    for(const s of [-1,1]){ const panel=mesh(rbox(0.085,0.44,0.018,0.008), suitM, s*0.09,1.17,0.124,false);
       panel.rotation.set(-0.1, s*0.4, s*0.05); body.add(panel); }                            // распахнутые полы пиджака
     for(const s of [-1,1]){ const col2=mesh(rbox(0.07,0.09,0.016,0.006), suitDark, s*0.055,1.5,-0.055,false);
       col2.rotation.set(-0.35, s*0.5, 0); body.add(col2); }                                   // воротник сзади
-    for(const by of [1.16,1.06]) body.add(mesh(sph(0.013,8,8), std(0x14101F,0.4), 0.05,by,0.148,false)); // пуговицы
-    if(kind==='h') body.add(mesh(box(0.035,0.045,0.012), pbr('pocket',{color:0xFFFFFF, roughness:0.8}), -0.105,1.4,0.132,false)); // платок
+    for(const by of [1.16,1.06]) body.add(mesh(sph(0.013,8,8), std(0x14101F,0.4), 0.05,by,0.136,false)); // пуговицы
+    if(kind==='h') body.add(mesh(box(0.035,0.045,0.012), pbr('pocket',{color:0xFFFFFF, roughness:0.8}), -0.098,1.4,0.120,false)); // платок
     if(kind==='g'||e.type==='cop'){
-      const badge=mesh(cyl(0.028,0.028,0.012,12), brassMat(), -0.11,1.34,0.155,false); badge.rotation.x=Math.PI/2-0.15; body.add(badge);
-      body.add(mesh(rbox(0.05,0.1,0.032,0.01), std(0x0E1220,0.5), -0.245,1.46,0.05,false));   // рация
-      body.add(mesh(cyl(0.004,0.004,0.09,6), std(0x0E1220,0.5), -0.245,1.55,0.05,false));     // антенна
+      const badge=mesh(cyl(0.028,0.028,0.012,12), brassMat(), -0.102,1.34,0.143,false); badge.rotation.x=Math.PI/2-0.15; body.add(badge);
+      body.add(mesh(rbox(0.05,0.1,0.032,0.01), std(0x0E1220,0.5), -0.225,1.46,0.05,false));   // рация
+      body.add(mesh(cyl(0.004,0.004,0.09,6), std(0x0E1220,0.5), -0.225,1.55,0.05,false));     // антенна
     }
     if(e.type==='fbi'){ if(!TEX.vest_FBI) TEX.vest_FBI=canvasTex(256,96,(gg)=>{ gg.clearRect(0,0,256,96);
         gg.font='900 66px "Segoe UI"'; gg.textAlign='center'; gg.fillStyle='#FFD319'; gg.shadowColor='#FFD319'; gg.shadowBlur=8; gg.fillText('FBI',128,68); });
@@ -2496,12 +2518,12 @@ function buildCharacter(kind, e, slotIdx){
   }
   /* ---------- руки ---------- */
   const mkArm=(side)=>{
-    const sh=new THREE.Group(); sh.position.set(0.24*side,1.44,0);
-    const delt=mesh(sph(0.084,16,12), suitM, 0,0,0); delt.scale.set(1.14,0.82,1.06); sh.add(delt); // плечи в духе 80-х
-    sh.add(mesh(limbGeo('uarm',0.31,[[0,0.062],[0.2,0.064],[0.5,0.055],[0.8,0.049],[1,0.046]]), suitM, 0,0.012,0));
+    const sh=new THREE.Group(); sh.position.set(0.215*side,1.44,0);
+    const delt=mesh(sph(0.078,16,12), suitM, 0,0,0); delt.scale.set(1.02,0.8,0.98); sh.add(delt); // плечи в духе 80-х
+    sh.add(mesh(limbGeo('uarm',0.31,[[0,0.057],[0.2,0.059],[0.5,0.051],[0.8,0.045],[1,0.042]]), suitM, 0,0.012,0));
     const elb=new THREE.Group(); elb.position.set(0,-0.31,0); sh.add(elb);
-    elb.add(mesh(sph(0.048,12,10), suitM, 0,0,0,false));
-    elb.add(mesh(limbGeo('farm',0.27,[[0,0.048],[0.25,0.050],[0.6,0.041],[0.9,0.036],[1,0.034]]), suitM, 0,0.006,0));
+    elb.add(mesh(sph(0.044,12,10), suitM, 0,0,0,false));
+    elb.add(mesh(limbGeo('farm',0.27,[[0,0.044],[0.25,0.046],[0.6,0.038],[0.9,0.033],[1,0.031]]), suitM, 0,0.006,0));
     if(!vest) elb.add(mesh(cyl(0.05,0.05,0.045,12), pbr('shirt2',{color:0xF4F1E8, roughness:0.85}), 0,-0.26,0,false));
     const hand=buildHand(skinM, side); hand.position.set(0,-0.3,0); elb.add(hand);
     body.add(sh); return {sh,elb};
@@ -2514,20 +2536,20 @@ function buildCharacter(kind, e, slotIdx){
   }
   /* ---------- голова ---------- */
   body.add(mesh(cyl(0.052,0.064,0.12,18), skinM, 0,1.53,0,false));
-  const trap=mesh(cyl(0.06,0.145,0.13,20), suitM, 0,1.47,-0.01,false); trap.scale.set(1.3,1,0.82); body.add(trap); // трапеция к плечам
+  const trap=mesh(cyl(0.06,0.145,0.13,20), suitM, 0,1.47,-0.01,false); trap.scale.set(1.15,1,0.78); body.add(trap); // трапеция к плечам
   const headG=new THREE.Group(); headG.position.set(0,1.62,0); headG.scale.setScalar(0.9); body.add(headG); parts.head=headG;
   const headBase=new THREE.Group(); headG.add(headBase); parts.headBase=headBase; // своя голова (прячется под маской-животным)
   const headPts=[[0.015,-0.175],[0.07,-0.168],[0.102,-0.14],[0.12,-0.1],[0.129,-0.05],[0.134,0.0],[0.133,0.05],[0.126,0.1],[0.11,0.14],[0.082,0.168],[0.04,0.184],[0.015,0.19]]
     .map(p=>new THREE.Vector2(p[0],p[1]));
   if(!GEOS.head) GEOS.head=new THREE.LatheGeometry(headPts,48);
-  const skull=mesh(GEOS.head, skinM, 0,0,0); skull.scale.set(0.96,1,0.94); headBase.add(skull);
-  const jaw=mesh(sph(0.092,16,12), skinM, 0,-0.098,0.028,false); jaw.scale.set(0.92,0.72,0.92); headBase.add(jaw);
-  const nose=mesh(new THREE.ConeGeometry(0.019,0.052,10), skinM, 0,-0.025,0.132,false);
+  const skull=mesh(GEOS.head, skinM, 0,0,0); skull.scale.set(0.90,0.98,0.88); headBase.add(skull);
+  const jaw=mesh(sph(0.092,16,12), skinM, 0,-0.098,0.028,false); jaw.scale.set(0.86,0.70,0.88); headBase.add(jaw);
+  const nose=mesh(new THREE.ConeGeometry(0.019,0.052,10), skinM, 0,-0.025,0.124,false);
   nose.rotation.x=Math.PI/2-0.25; headBase.add(nose);
-  for(const s of [-1,1]){ const ear=mesh(sph(0.03,10,8), skinM, s*0.128,-0.012,0,false); ear.scale.set(0.45,1,0.7); headBase.add(ear); }
+  for(const s of [-1,1]){ const ear=mesh(sph(0.03,10,8), skinM, s*0.116,-0.012,0,false); ear.scale.set(0.45,1,0.7); headBase.add(ear); }
   const faceM=new THREE.Mesh(new THREE.SphereGeometry(0.1395,24,16, Math.PI/2-0.62, 1.24, 0.95, 1.05),
     new THREE.MeshBasicMaterial({map:faceTexture(female?'f':((e.id||0)%3===0?'o':'m')), transparent:true, toneMapped:false, color:0xCFC4BC}));
-  faceM.scale.set(0.96,1,0.94); headBase.add(faceM);
+  faceM.scale.set(0.90,0.98,0.88); headBase.add(faceM);
   const hairObj=buildHair(hair, (e.id||0)+(kind==='h'?slotIdx*2:0), female);
   headBase.add(hairObj); parts.hair=hairObj;
   if(cap){
@@ -2568,7 +2590,7 @@ function buildCharacter(kind, e, slotIdx){
     txt.scale.set(0.3,0.6,1); txt.position.set(0,0.62,0.065); sh.add(txt);
     body.add(sh);
   }
-  root.scale.setScalar(scale);
+  root.scale.setScalar(scale*(e.type==='dozer'?1:(0.97+((Math.abs(e.id||0)+slotIdx)%4)*0.02)));
   return parts;
 }
 function onEntitySpawn(kind, d){
