@@ -493,6 +493,31 @@ const floats3D = [];
 let flashPool=[], flashIdx=0;
 const MATS = {}, GEOS = {};
 const TEX = {};
+/* ===== ТЕКСТУРЫ-АССЕТЫ (v7): настоящие картинки из public/assets ===== */
+const IMGS = {};
+for (const k of ['marble','wallpanel','walnut','fabric','steel','carpet','sunset','money','asphalt','leather']) {
+  const im = new Image(); im.onload = () => { IMGS[k] = im; }; im.src = '/assets/' + k + '.jpg';
+}
+function imgTex(key, rx = 1, ry = 1) {
+  if (!IMGS[key]) return null;
+  const t = new THREE.Texture(IMGS[key]);
+  t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping; t.repeat.set(rx, ry);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = (window.__nv84 && window.__nv84.gfx ? window.__nv84.gfx.aniso : 4);
+  t.needsUpdate = true; return t;
+}
+function imgBump(key, rx = 1, ry = 1) {
+  if (!IMGS[key]) return null;
+  const t = new THREE.Texture(IMGS[key]);
+  t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping; t.repeat.set(rx, ry);
+  t.anisotropy = 2; t.needsUpdate = true; return t;
+}
+function drawImgCover(g, im, x, y, w, h, alpha = 1) {
+  if (!im) return false;
+  const sc = Math.max(w / im.width, h / im.height), dw = im.width * sc, dh = im.height * sc;
+  g.save(); g.globalAlpha = alpha; g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.drawImage(im, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh); g.restore(); return true;
+}
 
 function canvasTex(w,h,draw){
   const c=document.createElement('canvas'); c.width=w; c.height=h;
@@ -565,10 +590,10 @@ function brushedNormal(){
 }
 const pbrCache=new Map();
 function pbr(key, params){ if(!pbrCache.has(key)) pbrCache.set(key, new THREE.MeshStandardMaterial(params)); return pbrCache.get(key); }
-function steelMat(){ const m=metalMaps(); return pbr('steel', {map:m.map, color:0x97A3C2, roughnessMap:m.rough, roughness:1, metalness:0.9, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.35,0.35), envMapIntensity:1.15}); }
-function darkSteelMat(){ const m=metalMaps(); return pbr('dsteel', {map:m.map, color:0x4A5474, roughnessMap:m.rough, roughness:1, metalness:0.85, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.3,0.3), envMapIntensity:1.05}); }
-function brassMat(){ const m=metalMaps(); return pbr('brass', {map:m.map, color:0xD9AE2E, roughnessMap:m.rough, roughness:0.85, metalness:0.85, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.2,0.2), envMapIntensity:1.2}); }
-function leatherMat(color=0x17122B){ return pbr('leather'+color, {color, roughness:0.52, metalness:0.05, normalMap:leatherNormal(), normalScale:new THREE.Vector2(0.5,0.5), envMapIntensity:0.85}); }
+function steelMat(){ const m=metalMaps(), si=imgTex('steel',2,2); return pbr('steel', {map:si||m.map, color:si?0xC7D0E6:0x97A3C2, roughnessMap:m.rough, roughness:1, metalness:0.9, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.35,0.35), bumpMap:imgBump('steel',2,2), bumpScale:0.3, envMapIntensity:1.15}); }
+function darkSteelMat(){ const m=metalMaps(), si=imgTex('steel',2,2); return pbr('dsteel', {map:si||m.map, color:si?0x7E8AB0:0x4A5474, roughnessMap:m.rough, roughness:1, metalness:0.85, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.3,0.3), bumpMap:imgBump('steel',2,2), bumpScale:0.3, envMapIntensity:1.05}); }
+function brassMat(){ const m=metalMaps(), si=imgTex('steel',2,2); return pbr('brass', {map:si||m.map, color:si?0xEFC65C:0xD9AE2E, roughnessMap:m.rough, roughness:0.85, metalness:0.85, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.2,0.2), bumpMap:imgBump('steel',2,2), bumpScale:0.2, envMapIntensity:1.2}); }
+function leatherMat(color=0x17122B){ return pbr('leather'+color, {color, roughness:0.52, metalness:0.05, normalMap:leatherNormal(), normalScale:new THREE.Vector2(0.5,0.5), bumpMap:imgBump('leather',2,2), bumpScale:0.35, envMapIntensity:0.85}); }
 function rbox(w,h,d,r=0.02){ const k=`rb${w},${h},${d},${r}`; if(!GEOS[k]) GEOS[k]=new RoundedBoxGeometry(w,h,d,4,r); return GEOS[k]; }
 function sph(r,w=28,h=20){ w=Math.max(w,26); h=Math.max(h,18); const k=`s${r},${w},${h}`; if(!GEOS[k]) GEOS[k]=new THREE.SphereGeometry(r,w,h); return GEOS[k]; }
 function cyl(rt,rb,h,seg=22){ seg=Math.max(seg,20); const k=`c${rt},${rb},${h},${seg}`; if(!GEOS[k]) GEOS[k]=new THREE.CylinderGeometry(rt,rb,h,seg); return GEOS[k]; }
@@ -602,6 +627,12 @@ function billTexture(){
     for(let i=0;i<130;i++) g.fillRect(Math.random()*w,Math.random()*h,1.6,1.6);
   });
   return TEX.bill;
+}
+function moneyStackTexture(){ // v7: пачки купюр текстурой-ассетом
+  if(TEX.moneyStack) return TEX.moneyStack;
+  const t=imgTex('money',1,1);
+  if(t){ TEX.moneyStack=t; return t; }
+  return billTexture();
 }
 /* ================= НАСТРОЙКИ ГРАФИКИ ================= */
 const GFX_PRESETS = {
@@ -755,7 +786,11 @@ function makeSkyTexture(){
 /* ================= ТЕКСТУРЫ ================= */
 function sunsetTexture(){
   if(TEX.sunset) return TEX.sunset;
-  TEX.sunset = canvasTex(512,512,(g,w,h)=>{
+  TEX.sunset = canvasTex(1024,512,(g,w,h)=>{
+    if(IMGS.sunset){ drawImgCover(g,IMGS.sunset,0,0,w,h);
+      g.fillStyle='rgba(18,3,32,.38)'; for(let y=6;y<h*0.6;y+=15) g.fillRect(0,y,w,5);
+      g.fillStyle='rgba(255,220,190,.07)'; for(let y=11;y<h*0.6;y+=15) g.fillRect(0,y,w,2);
+      g.fillStyle='rgba(18,3,32,.92)'; g.fillRect(0,0,w,10); return; }
     const gr=g.createLinearGradient(0,0,0,h);
     gr.addColorStop(0,'#3A1663'); gr.addColorStop(0.34,'#8E2A76'); gr.addColorStop(0.52,'#E04A80');
     gr.addColorStop(0.63,'#FF7A59'); gr.addColorStop(0.69,'#FFB35C'); gr.addColorStop(0.72,'#7A2E73'); gr.addColorStop(1,'#241040');
@@ -810,17 +845,33 @@ function floorTexture(){
       g.fillStyle=fill; g.fillRect(x*tw,y*th,tw+1,th+1);
       if(t===3 && x%5===2 && y%2===0){ g.fillStyle='rgba(255,240,190,.13)'; g.fillRect(x*tw+tw*0.25,y*th+th*0.46,tw*0.5,4); }
     }
+    // v7: настоящие текстуры улицы (асфальт) и ковра казино
+    const isCasino=/КАЗИНО/i.test(map.name||'');
+    if(IMGS.asphalt||IMGS.carpet){ for(let y=0;y<map.h;y++) for(let x=0;x<map.w;x++){ const t=map.grid[y*map.w+x];
+      if(t===3&&IMGS.asphalt){ const a=IMGS.asphalt, cs=300, ox=(hash2(x*3,y*7)*Math.max(1,a.width-cs))|0, oy=(hash2(x*11,y*5)*Math.max(1,a.height-cs))|0;
+        g.drawImage(a,ox,oy,cs,cs,x*tw,y*th,tw+1,th+1); g.fillStyle='rgba(16,8,38,.38)'; g.fillRect(x*tw,y*th,tw+1,th+1);
+        if(x%5===2&&y%2===0){ g.fillStyle='rgba(255,240,190,.16)'; g.fillRect(x*tw+tw*0.25,y*th+th*0.46,tw*0.5,4); } }
+      else if(t===4&&isCasino&&IMGS.carpet){ const a=IMGS.carpet;
+        g.drawImage(a, ((x%2)*(a.width/2))|0, ((y%2)*(a.height/2))|0, a.width/2, a.height/2, x*tw, y*th, tw+1, th+1);
+        g.fillStyle='rgba(20,6,40,.22)'; g.fillRect(x*tw,y*th,tw+1,th+1); }
+    } }
     // крупные плиты 2×2: градиент, оттенок каждой плиты, прожилки, крапинка
     for(let sy=0;sy<map.h;sy+=2) for(let sx=0;sx<map.w;sx+=2){
       const t=map.grid[Math.min(map.h-1,sy)*map.w+Math.min(map.w-1,sx)];
-      if(t===3||t===1) continue;
+      if(t===3||t===1||(t===4&&isCasino&&IMGS.carpet)) continue;
       const X=sx*tw, Y=sy*th, Wd=tw*2, Hd=th*2;
       const hTint=hash2(sx*17+3,sy*19+7);
       g.fillStyle=hTint>0.62?'rgba(150,110,220,.05)':(hTint<0.3?'rgba(70,90,180,.06)':'rgba(0,0,0,0)');
       g.fillRect(X,Y,Wd,Hd);
+      if(IMGS.marble){ const mi=IMGS.marble, cs=400, ox=(hash2(sx*7+1,sy*3+5)*Math.max(1,mi.width-cs))|0, oy=(hash2(sx*13+2,sy*17+4)*Math.max(1,mi.height-cs))|0;
+        g.save(); g.beginPath(); g.rect(X,Y,Wd,Hd); g.clip();
+        if(hash2(sx*3,sy*7)>0.5){ g.translate(X+Wd,Y); g.scale(-1,1); g.drawImage(mi,ox,oy,cs,cs,0,0,Wd,Hd); }
+        else g.drawImage(mi,ox,oy,cs,cs,X,Y,Wd,Hd);
+        g.restore(); g.fillStyle='rgba(30,14,72,.36)'; g.fillRect(X,Y,Wd,Hd); g.fillStyle='rgba(8,3,22,.10)'; g.fillRect(X,Y,Wd,Hd); }
       const gr=g.createLinearGradient(X,Y,X+Wd,Y+Hd);
       gr.addColorStop(0,'rgba(255,240,255,.05)'); gr.addColorStop(0.5,'rgba(255,255,255,0)'); gr.addColorStop(1,'rgba(0,0,10,.13)');
       g.fillStyle=gr; g.fillRect(X,Y,Wd,Hd);
+      if(!IMGS.marble){
       const h1=hash2(sx*3+1,sy*5+2), h2=hash2(sx*7+4,sy*3+9), h3=hash2(sx*11+6,sy*13+1), h4=hash2(sx*23+8,sy*29+4);
       const vein=(hh,alpha,width,col)=>{
         g.strokeStyle=`rgba(${col},${alpha})`; g.lineWidth=width; g.beginPath();
@@ -835,6 +886,7 @@ function floorTexture(){
       g.fillStyle='rgba(230,215,255,.05)';
       for(let i=0;i<26;i++){ const dx=X+hash2(sx*31+i,sy*17+i)*Wd, dy=Y+hash2(sx*13+i*3,sy*29+i)*Hd;
         g.fillRect(dx,dy,2,2); }
+      }
     }
     // швы плит: тёмная линия + блик кромки
     for(let x=0;x<=map.w;x+=2){ g.fillStyle='rgba(6,3,16,.9)'; g.fillRect(x*tw-2,0,4,S);
@@ -889,6 +941,12 @@ function depositTexture(){
 function wallTexture(){
   if(TEX.wall) return TEX.wall;
   TEX.wall = canvasTex(512,512,(g,w,h)=>{
+    if(IMGS.wallpanel){ drawImgCover(g,IMGS.wallpanel,0,0,w,h);
+      g.fillStyle='rgba(26,14,58,.20)'; g.fillRect(0,0,w,h);
+      g.fillStyle='rgba(255,255,255,.045)'; g.fillRect(0,0,w,30);
+      const dg2=g.createLinearGradient(0,340,0,512); dg2.addColorStop(0,'rgba(0,0,0,0)'); dg2.addColorStop(1,'rgba(0,0,0,.42)');
+      g.fillStyle=dg2; g.fillRect(0,340,w,172);
+      g.fillStyle='rgba(8,6,14,.85)'; g.fillRect(0,498,w,14); return; }
     const gr=g.createLinearGradient(0,0,0,h);
     gr.addColorStop(0,'#5A657E'); gr.addColorStop(0.55,'#48536A'); gr.addColorStop(1,'#343C4C');
     g.fillStyle=gr; g.fillRect(0,0,w,h);
@@ -929,6 +987,9 @@ function wallTexture(){
 }
 function wallNormal(){
   if(TEX.wallN) return TEX.wallN;
+  if(IMGS.wallpanel){ const c=document.createElement('canvas'); c.width=c.height=512;
+    drawImgCover(c.getContext('2d'),IMGS.wallpanel,0,0,512,512);
+    TEX.wallN=heightToNormal(c,1.15); TEX.wallN.wrapS=TEX.wallN.wrapT=THREE.RepeatWrapping; return TEX.wallN; }
   const c=heightCanvas(512,512,(g,w,h)=>{
     g.fillStyle='#787878'; g.fillRect(0,0,w,h);
     const panel=(px,py,pw,ph)=>{ g.fillStyle='#8C8C8C'; g.fillRect(px,py,pw,ph);
@@ -949,6 +1010,10 @@ function wallNormal(){
 function marbleTopTexture(){
   if(TEX.marbleTop) return TEX.marbleTop;
   TEX.marbleTop = canvasTex(256,256,(g,w,h)=>{
+    if(IMGS.marble){ const mi=IMGS.marble, cs=420; g.drawImage(mi,((mi.width-cs)*0.3)|0,((mi.height-cs)*0.4)|0,cs,cs,0,0,w,h);
+      g.fillStyle='rgba(126,110,196,.30)'; g.fillRect(0,0,w,h);
+      const lg=g.createLinearGradient(0,0,w,h); lg.addColorStop(0,'rgba(255,255,255,.10)'); lg.addColorStop(1,'rgba(0,0,20,.12)');
+      g.fillStyle=lg; g.fillRect(0,0,w,h); return; }
     const gr=g.createLinearGradient(0,0,w,h);
     gr.addColorStop(0,'#6E6396'); gr.addColorStop(0.5,'#5D5284'); gr.addColorStop(1,'#4C4370');
     g.fillStyle=gr; g.fillRect(0,0,w,h);
@@ -1243,7 +1308,9 @@ function buildWorld(mp){
   const curbMat = mat(0x2A1B52, 0.9, 0);
   const unitBox = box(1,1,1);
   const sunset = sunsetTexture();
-  const glassWallMat = new THREE.MeshBasicMaterial({map:sunset, toneMapped:false, color:new THREE.Color(1.28,1.14,1.3)});
+  const glassMats={};
+  const glassAt=(i)=>{ const k=((i%12)+12)%12; if(!glassMats[k]){ const st=sunset.clone(); st.needsUpdate=true; st.wrapS=THREE.RepeatWrapping; st.repeat.set(0.225,1); st.offset.x=(k/11)*0.775; glassMats[k]=new THREE.MeshBasicMaterial({map:st, toneMapped:false, color:new THREE.Color(1.28,1.14,1.3)}); } return glassMats[k]; };
+  const glassWallMat = glassAt(5);
   const frameMat = mat(0x1C1430, 0.6, 0.3);
 
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
@@ -1260,7 +1327,7 @@ function buildWorld(mp){
           const hWall=2.7;
           const wall=mesh(unitBox, wallMat, cx,hWall/2,cz); wall.scale.set(1,hWall,1); worldGroup.add(wall);
           if((x+y)%4!==3){
-            const win=new THREE.Mesh(new THREE.PlaneGeometry(0.9,2.0), glassWallMat);
+            const win=new THREE.Mesh(new THREE.PlaneGeometry(0.9,2.0), glassAt(x+y));
             if(innerW){ win.position.set(cx+0.51,1.45,cz); win.rotation.y=Math.PI/2; }
             else { win.position.set(cx,1.45,cz+0.51); }
             worldGroup.add(win);
@@ -1290,7 +1357,7 @@ function buildWorld(mp){
       const cap=mesh(unitBox, wallTopMat, cx,hWall+0.03,cz,false); cap.scale.set(1.02,0.06,1.02); worldGroup.add(cap);
       if(facade){
         // витрина снаружи + неоновая кромка
-        const win=new THREE.Mesh(new THREE.PlaneGeometry(0.92,1.9), glassWallMat);
+        const win=new THREE.Mesh(new THREE.PlaneGeometry(0.92,1.9), glassAt(x+y));
         win.position.set(cx,1.35,cz+0.51); worldGroup.add(win);
         worldGroup.add(Object.assign(mesh(box(0.98,0.07,0.09), frameMat, cx,0.38,cz+0.52,false),{}));
         worldGroup.add(mesh(box(0.045,1.86,0.05), frameMat, cx,1.35,cz+0.52,false));
@@ -1673,6 +1740,7 @@ function counterTexture(){
 function woodTexture(){
   if(TEX.wood) return TEX.wood;
   TEX.wood=canvasTex(256,256,(g,w,h)=>{
+    if(IMGS.walnut){ drawImgCover(g,IMGS.walnut,0,0,w,h); g.fillStyle='rgba(30,12,34,.18)'; g.fillRect(0,0,w,h); return; }
     g.fillStyle='#3B2633'; g.fillRect(0,0,w,h);
     for(let y=0;y<h;y+=2){ const a=0.05+0.1*Math.abs(Math.sin(y*0.11)+Math.sin(y*0.023+1.7));
       g.fillStyle='rgba('+(y%8<4?'255,200,160':'10,0,10')+','+(a*0.5)+')'; g.fillRect(0,y,w,2); }
@@ -1710,7 +1778,7 @@ function buildProp(x,y,type){
       g.add(cm);
     }
     if(hash2(x*9,y*5)<0.4) g.add(mesh(box(0.26,0.012,0.18), mat(0xE8E4DA,0.9), -0.15,1.09,-0.1,false));
-    if(hash2(x*5,y*11)<0.3){ const billM=new THREE.MeshStandardMaterial({map:billTexture(), roughness:0.85});
+    if(hash2(x*5,y*11)<0.3){ const billM=new THREE.MeshStandardMaterial({map:moneyStackTexture(), roughness:0.85});
       const bs=std(0x9CC48A,0.85);
       g.add(mesh(box(0.17,0.04,0.08), [bs,bs,billM,bs,bs,bs], -0.2,1.1,0.14,false)); }
   } else if(type==='table'){
@@ -1940,7 +2008,7 @@ function std(color, rough=0.7, metal=0.04){ return new THREE.MeshStandardMateria
 const clothCache = new Map();
 function clothMat(color){
   if(!clothCache.has(color)) clothCache.set(color, new THREE.MeshStandardMaterial({
-    color, roughness:0.95, metalness:0.02, roughnessMap:suitRough(), normalMap:clothNormal(), normalScale:new THREE.Vector2(0.5,0.5), envMapIntensity:0.35}));
+    map:imgTex('fabric',2,2), bumpMap:imgBump('fabric',2,2), bumpScale:0.4, color, roughness:0.95, metalness:0.02, roughnessMap:suitRough(), normalMap:clothNormal(), normalScale:new THREE.Vector2(0.5,0.5), envMapIntensity:0.35}));
   return clothCache.get(color);
 }
 /* ===== «Живые» материалы против глины: складки, кожа, пряди, металл ===== */
@@ -2016,7 +2084,7 @@ function suitRough(){
   });
   TEX.suitRgh.wrapS=THREE.RepeatWrapping; return TEX.suitRgh;
 }
-function suitMat(hex){ return pbr('suitM'+hex,{map:suitTexture(hex), color:0xFFFFFF, roughnessMap:suitRough(), roughness:1, metalness:0.02, normalMap:clothNormal(), normalScale:new THREE.Vector2(0.55,0.55), envMapIntensity:0.35}); }
+function suitMat(hex){ return pbr('suitM'+hex,{map:suitTexture(hex), color:0xFFFFFF, roughnessMap:suitRough(), roughness:1, metalness:0.02, normalMap:clothNormal(), normalScale:new THREE.Vector2(0.55,0.55), bumpMap:imgBump('fabric',3,3), bumpScale:0.45, envMapIntensity:0.35}); }
 function pantsTexture(hex){
   const key='pants_'+hex; if(TEX[key]) return TEX[key];
   const css='#'+(hex>>>0).toString(16).padStart(6,'0');
@@ -2034,7 +2102,7 @@ function pantsTexture(hex){
   });
   TEX[key].wrapS=THREE.RepeatWrapping; return TEX[key];
 }
-function pantsMat(hex){ return pbr('pantsM'+hex,{map:pantsTexture(hex), color:0xFFFFFF, roughnessMap:suitRough(), roughness:1, metalness:0.0, normalMap:clothNormal(), normalScale:new THREE.Vector2(0.5,0.5), envMapIntensity:0.3}); }
+function pantsMat(hex){ return pbr('pantsM'+hex,{map:pantsTexture(hex), color:0xFFFFFF, roughnessMap:suitRough(), roughness:1, metalness:0.0, normalMap:clothNormal(), normalScale:new THREE.Vector2(0.5,0.5), bumpMap:imgBump('fabric',3,3), bumpScale:0.4, envMapIntensity:0.3}); }
 function skinTexture(){
   if(TEX.skinT) return TEX.skinT;
   TEX.skinT=canvasTex(256,256,(g)=>{
@@ -2143,8 +2211,8 @@ function chipMats(css){
 }
 function buildGun(weapon){
   const g=new THREE.Group();
-  const poly=pbr('gunpoly',{color:0x17171F, roughness:0.48, metalness:0.35});
-  const metal=pbr('gunmetal',{color:0x2B2F42, roughness:0.34, metalness:0.75, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.25,0.25)});
+  const poly=pbr('gunpoly',{color:0x17171F, roughness:0.48, metalness:0.35, bumpMap:imgBump('leather',3,3), bumpScale:0.12});
+  const gst=imgTex('steel',1,1); const metal=pbr('gunmetal',{map:gst, color:gst?0x8E9CC2:0x2B2F42, roughness:0.34, metalness:0.75, normalMap:brushedNormal(), normalScale:new THREE.Vector2(0.25,0.25), bumpMap:imgBump('steel',1,1), bumpScale:0.2});
   const gripM=pbr('gungrip',{color:0x201812, roughness:0.72, metalness:0.05, normalMap:leatherNormal(), normalScale:new THREE.Vector2(0.35,0.35)});
   const L = weapon==='shotgun'?0.6:weapon==='smg'?0.4:0.54;
   g.add(mesh(rbox(0.058,0.1,L,0.018), poly, 0,0,L*0.24,false));                              // ствольная коробка
@@ -2413,7 +2481,7 @@ function buildCharacter(kind, e, slotIdx){
     bag.add(handle);
     const rim=mesh(new THREE.TorusGeometry(0.155,0.02,8,22), std(0x2EFF8B,0.4), 0.21,0,0,false);
     rim.rotation.y=Math.PI/2; bag.add(rim); parts.bagRim=rim;
-    const billM=new THREE.MeshStandardMaterial({map:billTexture(), roughness:0.85});
+    const billM=new THREE.MeshStandardMaterial({map:moneyStackTexture(), roughness:0.85});
     const billSide=std(0x9CC48A,0.85);
     bag.add(mesh(box(0.15,0.045,0.07), [billSide,billSide,billM,billSide,billSide,billSide], 0.15,0.16,0.03,false));
     bag.add(mesh(box(0.15,0.045,0.07), [billSide,billSide,billM,billSide,billSide,billSide], 0.23,0.13,-0.04,false));
@@ -2510,7 +2578,7 @@ function onEntitySpawn(kind, d){
       band.rotation.y=Math.PI/2-0.5; g.add(band); }
     const rim=mesh(new THREE.TorusGeometry(0.19,0.024,8,22), std(col,0.4), 0.24,0.19,-0.12,false);
     rim.rotation.y=Math.PI/2-0.5; g.add(rim);
-    const billM=new THREE.MeshStandardMaterial({map:billTexture(), roughness:0.85});
+    const billM=new THREE.MeshStandardMaterial({map:moneyStackTexture(), roughness:0.85});
     const bs=std(0x9CC48A,0.85);
     g.add(mesh(box(0.15,0.04,0.07), [bs,bs,billM,bs,bs,bs], 0.12,0.36,0.05,false));
     const handle=mesh(new THREE.TorusGeometry(0.1,0.017,8,18,Math.PI), leatherMat(0x0F0B20), 0,0.36,0,false);
@@ -2657,7 +2725,7 @@ function buildLoot(l){
     const mkBar=(x,y2,z,ry)=>{ const b=mesh(barGeo, gm, x,y2,z); b.rotation.y=Math.PI/4+ry; b.scale.set(1.5,1,0.85); g.add(b); };
     mkBar(-0.13,0.04,0,0); mkBar(0.14,0.04,0.02,0.2); mkBar(0,0.115,-0.01,-0.15);
   } else if(l.type==='money'){
-    const billM=new THREE.MeshStandardMaterial({map:billTexture(), roughness:0.85});
+    const billM=new THREE.MeshStandardMaterial({map:moneyStackTexture(), roughness:0.85});
     const bs=std(0x9CC48A,0.85);
     g.add(mesh(box(0.32,0.06,0.19), [bs,bs,billM,bs,bs,bs], 0,0.035,0));
     g.add(mesh(box(0.32,0.06,0.19), [bs,bs,billM,bs,bs,bs], 0.01,0.095,0.005));
