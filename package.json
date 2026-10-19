@@ -1,0 +1,13 @@
+{
+  "name": "neon-vault-84",
+  "version": "1.0.0",
+  "description": "NEON VAULT '84 — изометрический co-op heist-шутер (LAN до 4 игроков + боты)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "three": "^0.186.1",
+    "ws": "^8.18.0"
+  }
+}
